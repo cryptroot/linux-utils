@@ -607,7 +607,6 @@ if [[ -n "$AUR_HELPER" && -n "$USERNAME" ]]; then
     # Build as the regular user, then install as root.
     # Using makepkg without -i avoids the user needing sudo during build,
     # which would prompt for a password and block automated installs.
-    local _aur_builddir
     _aur_builddir="$(mktemp -d)"
     chown "$USERNAME":"$USERNAME" "$_aur_builddir"
     if sudo -u "$USERNAME" bash -c '
