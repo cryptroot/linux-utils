@@ -55,9 +55,7 @@ sed -i "s/^#${LOCALE}/${LOCALE}/" /etc/locale.gen
 locale-gen
 echo "LANG=${LOCALE}" > /etc/locale.conf
 
-if [[ "$KEYMAP" != "us" ]]; then
-    echo "KEYMAP=${KEYMAP}" > /etc/vconsole.conf
-fi
+echo "KEYMAP=${KEYMAP}" > /etc/vconsole.conf
 
 # ------------------------------------------------------------------------------
 # Network configuration
