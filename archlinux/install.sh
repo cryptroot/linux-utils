@@ -18,6 +18,8 @@
 #
 # WARNING: This script will DESTROY all data on the target disk.
 #          Review the configuration carefully before running.
+#
+# Additional note to self: It is common to see "fatal library error, lookup self" during chroot update, this is apparently fine.
 
 set -euo pipefail
 
