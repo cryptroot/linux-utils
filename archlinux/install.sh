@@ -678,7 +678,8 @@ select_mirrors() {
             --sort rate
             --protocol https
             --age 48
-            --timeout 5
+            --connection-timeout 5
+            --download-timeout 5
             --save /etc/pacman.d/mirrorlist
         )
 
