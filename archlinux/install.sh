@@ -735,12 +735,26 @@ build_package_list() {
     [[ -n "$USERNAME" ]] && _pkgs+=(sudo)
 
     case "$GPU_DRIVER" in
-        amd)         _pkgs+=(mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau) ;;
+        amd)         _pkgs+=(mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver) ;;
         # xf86-video-intel is deprecated upstream; the modesetting DDX (built into
         # Xorg) is preferred and handles modern Intel GPUs better.
         intel)       _pkgs+=(mesa vulkan-intel intel-media-driver) ;;
-        nvidia)      _pkgs+=(nvidia "${KERNEL}-headers" nvidia-utils nvidia-settings) ;;
-        nvidia-open) _pkgs+=(nvidia-open "${KERNEL}-headers" nvidia-utils nvidia-settings) ;;
+        nvidia)
+            # nvidia is kernel-specific; pick the right variant
+            case "$KERNEL" in
+                linux)          _pkgs+=(nvidia) ;;
+                linux-lts)      _pkgs+=(nvidia-lts) ;;
+                *)              _pkgs+=(nvidia-dkms) ;;
+            esac
+            _pkgs+=("${KERNEL}-headers" nvidia-utils nvidia-settings)
+            ;;
+        nvidia-open)
+            case "$KERNEL" in
+                linux)          _pkgs+=(nvidia-open) ;;
+                *)              _pkgs+=(nvidia-open-dkms) ;;
+            esac
+            _pkgs+=("${KERNEL}-headers" nvidia-utils nvidia-settings)
+            ;;
         vmware)      _pkgs+=(xf86-video-vmware open-vm-tools) ;;
         virtualbox)  _pkgs+=(virtualbox-guest-utils) ;;
     esac
@@ -797,10 +811,11 @@ configure_system() {
     [[ -f "${script_dir}/update.sh" ]]        || die "update.sh not found next to install.sh"
     [[ -f "${script_dir}/btrfs-restore.sh" ]] || die "btrfs-restore.sh not found next to install.sh"
 
-    # Stage scripts inside the new system's /tmp
-    cp "${script_dir}/chroot-setup.sh" /mnt/tmp/chroot-setup.sh
-    cp "${script_dir}/update.sh"       /mnt/tmp/update.sh
-    cp "${script_dir}/btrfs-restore.sh" /mnt/tmp/btrfs-restore.sh
+    # Stage scripts inside the new system's /root (not /tmp, because
+    # arch-chroot mounts a fresh tmpfs on /tmp that hides existing files)
+    cp "${script_dir}/chroot-setup.sh" /mnt/root/chroot-setup.sh
+    cp "${script_dir}/update.sh"       /mnt/root/update.sh
+    cp "${script_dir}/btrfs-restore.sh" /mnt/root/btrfs-restore.sh
 
     # Substitute placeholder variables (non-sensitive only)
     # Passwords are passed via environment variables to avoid writing them to disk
@@ -825,13 +840,13 @@ configure_system() {
         -e "s|__SWAP_PART__|${SWAP_PART:-}|g" \
         -e "s|__AUR_HELPER__|${AUR_HELPER}|g" \
         -e "s|__REFLECTOR_COUNTRY__|${REFLECTOR_COUNTRY}|g" \
-        /mnt/tmp/chroot-setup.sh
+        /mnt/root/chroot-setup.sh
 
     sed -i \
         -e "s|__NOTIFY_USER__|${USERNAME}|g" \
-        /mnt/tmp/update.sh
+        /mnt/root/update.sh
 
-    chmod +x /mnt/tmp/chroot-setup.sh
+    chmod +x /mnt/root/chroot-setup.sh
     # Pass passwords via environment so they are never written to the staged script file.
     # NOTE: Environment variables are readable in /proc/<pid>/environ by root processes.
     # This is acceptable on a single-user live ISO; no untrusted code is running.
@@ -840,16 +855,16 @@ configure_system() {
         ROOT_PASSWORD="${ROOT_PASSWORD}" \
         USERNAME="${USERNAME}" \
         USER_PASSWORD="${USER_PASSWORD}" \
-        /tmp/chroot-setup.sh
+        /root/chroot-setup.sh
 
     # Deploy btrfs-restore.sh for convenient access from the installed system
     if [[ "$ROOT_FS" == "btrfs" ]]; then
-        install -Dm0755 /mnt/tmp/btrfs-restore.sh /mnt/usr/local/bin/btrfs-restore
+        install -Dm0755 /mnt/root/btrfs-restore.sh /mnt/usr/local/bin/btrfs-restore
         log "btrfs-restore deployed to /usr/local/bin/btrfs-restore"
     fi
 
     # Clean up staging files
-    rm -f /mnt/tmp/chroot-setup.sh /mnt/tmp/update.sh /mnt/tmp/btrfs-restore.sh
+    rm -f /mnt/root/chroot-setup.sh /mnt/root/update.sh /mnt/root/btrfs-restore.sh
 
     # Clean pacman package cache to save disk space
     step "Cleaning pacman package cache"
