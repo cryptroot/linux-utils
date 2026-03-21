@@ -633,7 +633,7 @@ if [[ "$ROOT_FS" == "btrfs" ]]; then
     fi
     rmdir /.snapshots 2>/dev/null || true
 
-    if ! snapper -c root create-config /; then
+    if ! snapper --no-dbus -c root create-config /; then
         error "snapper create-config failed (non-fatal) — configure snapper manually after reboot"
         # Restore /.snapshots mount so the system remains consistent
         mkdir -p /.snapshots
