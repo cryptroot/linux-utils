@@ -161,35 +161,44 @@ if [[ "$LUKS" == "true" ]]; then
 
     _mkinitcpio_ok=true
 
-    # udev → systemd
-    if ! _replace_hook "udev" "systemd"; then
-        error "Hook 'udev' not found in HOOKS — cannot replace with 'systemd'."
-        _mkinitcpio_ok=false
+    # udev → systemd (mkinitcpio v39+ already defaults to systemd)
+    _has_systemd=false
+    for h in "${_hooks[@]}"; do [[ "$h" == "systemd" ]] && _has_systemd=true; done
+    if [[ "$_has_systemd" == false ]]; then
+        if ! _replace_hook "udev" "systemd"; then
+            error "Hook 'udev' not found in HOOKS — cannot replace with 'systemd'."
+            _mkinitcpio_ok=false
+        fi
     fi
 
     # keymap consolefont → sd-vconsole (replaces both with one entry)
-    _hooks_new=()
-    _replaced_vconsole=false
-    for h in "${_hooks[@]}"; do
-        if [[ "$h" == "keymap" ]]; then
-            if [[ "$_replaced_vconsole" == false ]]; then
-                _hooks_new+=("sd-vconsole")
-                _replaced_vconsole=true
+    # mkinitcpio v39+ already defaults to sd-vconsole — skip if present.
+    _has_sd_vconsole=false
+    for h in "${_hooks[@]}"; do [[ "$h" == "sd-vconsole" ]] && _has_sd_vconsole=true; done
+    if [[ "$_has_sd_vconsole" == false ]]; then
+        _hooks_new=()
+        _replaced_vconsole=false
+        for h in "${_hooks[@]}"; do
+            if [[ "$h" == "keymap" ]]; then
+                if [[ "$_replaced_vconsole" == false ]]; then
+                    _hooks_new+=("sd-vconsole")
+                    _replaced_vconsole=true
+                fi
+            elif [[ "$h" == "consolefont" ]]; then
+                if [[ "$_replaced_vconsole" == false ]]; then
+                    _hooks_new+=("sd-vconsole")
+                    _replaced_vconsole=true
+                fi
+            else
+                _hooks_new+=("$h")
             fi
-        elif [[ "$h" == "consolefont" ]]; then
-            if [[ "$_replaced_vconsole" == false ]]; then
-                _hooks_new+=("sd-vconsole")
-                _replaced_vconsole=true
-            fi
-        else
-            _hooks_new+=("$h")
+        done
+        if [[ "$_replaced_vconsole" == false ]]; then
+            error "Hooks 'keymap'/'consolefont' not found in HOOKS — cannot replace with 'sd-vconsole'."
+            _mkinitcpio_ok=false
         fi
-    done
-    if [[ "$_replaced_vconsole" == false ]]; then
-        error "Hooks 'keymap'/'consolefont' not found in HOOKS — cannot replace with 'sd-vconsole'."
-        _mkinitcpio_ok=false
+        _hooks=("${_hooks_new[@]}")
     fi
-    _hooks=("${_hooks_new[@]}")
 
     # Insert sd-encrypt after block (before filesystems)
     _has_sd_encrypt=false
