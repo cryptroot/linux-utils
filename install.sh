@@ -96,6 +96,10 @@ case "$OS" in
                 exec bash "$INSTALL_DIR/install-tui.sh" "$@"
                 ;;
             auto)
+                if ! command -v jq &>/dev/null; then
+                    echo -e "${YELLOW}[!]${NC} jq is required for auto mode — installing..."
+                    pacman -Sy --noconfirm --needed jq
+                fi
                 exec bash "$INSTALL_DIR/automated.sh" "$@"
                 ;;
             *)
