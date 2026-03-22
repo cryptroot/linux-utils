@@ -543,6 +543,7 @@ It must start and end with a letter or digit."
                 "intel"        "Intel          — mesa + vulkan-intel" \
                 "nvidia"       "NVIDIA         — proprietary driver" \
                 "nvidia-open"  "NVIDIA Open    — open-source NVIDIA kernel module" \
+                "qemu"         "QEMU/KVM       — mesa + qemu-guest-agent + spice" \
                 "vmware"       "VMware         — open-vm-tools" \
                 "virtualbox"   "VirtualBox     — virtualbox-guest-utils"; then
             GPU_DRIVER="$(cat "$TMPFILE")"

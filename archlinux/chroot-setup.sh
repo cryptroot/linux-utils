@@ -359,6 +359,7 @@ fi
 # GPU — enable guest agent services where applicable
 # ------------------------------------------------------------------------------
 case "$GPU_DRIVER" in
+    qemu)       _enable_service qemu-guest-agent qemu-guest-agent.service "qemu-guest-agent (QEMU/KVM guest agent)" ;;
     vmware)     _enable_service open-vm-tools vmtoolsd.service "vmtoolsd (VMware guest agent)" ;;
     virtualbox) _enable_service virtualbox-guest-utils vboxservice.service "vboxservice (VirtualBox guest agent)" ;;
 esac
