@@ -55,9 +55,7 @@ sed -i "s/^#${LOCALE}/${LOCALE}/" /etc/locale.gen
 locale-gen
 echo "LANG=${LOCALE}" > /etc/locale.conf
 
-if [[ "$KEYMAP" != "us" ]]; then
-    echo "KEYMAP=${KEYMAP}" > /etc/vconsole.conf
-fi
+echo "KEYMAP=${KEYMAP}" > /etc/vconsole.conf
 
 # ------------------------------------------------------------------------------
 # Network configuration
@@ -606,17 +604,24 @@ if [[ -n "$AUR_HELPER" && -n "$USERNAME" ]]; then
     # Build dependencies (git is needed, base-devel should already be installed)
     pacman -S --noconfirm --needed git base-devel
 
-    # Build and install as the regular user (AUR helpers must not run as root)
+    # Build as the regular user, then install as root.
+    # Using makepkg without -i avoids the user needing sudo during build,
+    # which would prompt for a password and block automated installs.
+    _aur_builddir="$(mktemp -d)"
+    chown "$USERNAME":"$USERNAME" "$_aur_builddir"
     if sudo -u "$USERNAME" bash -c '
         set -euo pipefail
-        cd "$(mktemp -d)"
-        git clone "https://aur.archlinux.org/${1}-bin.git" .
-        makepkg -si --noconfirm
-    ' _ "$AUR_HELPER"; then
+        cd "$1"
+        git clone "https://aur.archlinux.org/${2}-bin.git" .
+        makepkg --noconfirm
+    ' _ "$_aur_builddir" "$AUR_HELPER"; then
+        # Install the built package as root — no sudo password needed
+        pacman -U --noconfirm "$_aur_builddir"/*.pkg.tar.zst
         log "$AUR_HELPER installed successfully"
     else
         error "AUR helper ($AUR_HELPER) installation failed (non-fatal) — install manually after reboot"
     fi
+    rm -rf "$_aur_builddir"
 fi
 
 # ------------------------------------------------------------------------------
@@ -635,7 +640,7 @@ if [[ "$ROOT_FS" == "btrfs" ]]; then
     fi
     rmdir /.snapshots 2>/dev/null || true
 
-    if ! snapper -c root create-config /; then
+    if ! snapper --no-dbus -c root create-config /; then
         error "snapper create-config failed (non-fatal) — configure snapper manually after reboot"
         # Restore /.snapshots mount so the system remains consistent
         mkdir -p /.snapshots
