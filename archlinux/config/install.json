@@ -2,7 +2,7 @@
   "configs": {
     "minimal-vm": {
       "description": "Minimal headless Arch install with sensible defaults",
-      "DISK": "/dev/sda",
+      "DISK": "/dev/vda",
       "EFI_SIZE": "512M",
       "SWAP_SIZE": "4G",
       "ROOT_SIZE": "",
@@ -27,7 +27,7 @@
     },
     "hyprland-qemu": {
       "description": "Hyprland tiling WM with btrfs and encryption",
-      "DISK": "/dev/sda",
+      "DISK": "/dev/vda",
       "EFI_SIZE": "512M",
       "SWAP_SIZE": "8G",
       "ROOT_SIZE": "16G",
