@@ -2,6 +2,21 @@
 
 A collection of Linux utilities and helpers.
 
+## Quick start
+
+The top-level `install.sh` is a dispatcher that routes to the correct OS-specific installer:
+
+```bash
+# Interactive TUI wizard
+bash install.sh archlinux tui
+
+# Automated install using a named config from archlinux/config/install.json
+bash install.sh archlinux auto minimal
+bash install.sh archlinux auto desktop-kde -- --dry-run
+```
+
+Run `bash install.sh` with no arguments to see available operating systems and modes.
+
 ## Contents
 
 ### archlinux
@@ -14,7 +29,9 @@ Automated Arch Linux installation script based on the [official installation gui
 | `installation/install.sh` | Headless installer — edit config variables at the top, then run |
 | `installation/chroot-setup.sh` | System configuration executed inside `arch-chroot` (called by `install.sh`) |
 | `installation/update.sh` | Daily automated update script deployed to the installed system via systemd timer |
+| `installation/automated.sh` | Non-interactive installer driven by a named JSON config |
 | `installation/btrfs-restore.sh` | Restore root filesystem from a btrfs pre-upgrade snapshot |
+| `config/install.json` | Named configuration presets for automated installs |
 
 **Usage (TUI — recommended):**
 
@@ -40,6 +57,23 @@ Automated Arch Linux installation script based on the [official installation gui
    ```bash
    bash installation/install.sh
    ```
+
+**Usage (automated):**
+
+1. Boot from the Arch Linux installation medium
+2. Connect to the internet
+3. Copy the `archlinux/` directory to the live environment
+4. Review/edit configuration presets in `config/install.json`
+5. Preview without making changes:
+   ```bash
+   bash installation/automated.sh minimal -- --dry-run
+   ```
+6. Run:
+   ```bash
+   bash installation/automated.sh minimal
+   ```
+
+Passwords can be passed via environment variables (`ROOT_PASSWORD`, `USER_PASSWORD`, `LUKS_PASSWORD`).
 
 **Key configuration options:**
 
