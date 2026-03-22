@@ -88,7 +88,7 @@ log "=== Starting daily update ==="
 # Refresh mirrors if reflector is available
 if command -v reflector &>/dev/null; then
     log "Refreshing mirror list via reflector"
-    reflector_args=(--latest 20 --sort rate --protocol https --age 48 --timeout 5 --save /etc/pacman.d/mirrorlist)
+    reflector_args=(--latest 20 --sort rate --protocol https --age 48 --connection-timeout 5 --download-timeout 5 --save /etc/pacman.d/mirrorlist)
     [[ -n "$REFLECTOR_COUNTRY" ]] && reflector_args+=(--country "$REFLECTOR_COUNTRY")
     if ! reflector "${reflector_args[@]}" 2>&1 | tee -a "$LOG"; then
         log "WARNING: reflector failed (non-fatal) — continuing with existing mirror list"
