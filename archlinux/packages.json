@@ -1,0 +1,89 @@
+{
+  "distro": "archlinux",
+  "packageManager": "pacman",
+  "aurHelper": "yay",
+  "categories": [
+    {
+      "name": "base",
+      "description": "Essential system packages",
+      "packages": [
+        { "name": "base-devel" },
+        { "name": "git" },
+        { "name": "networkmanager" },
+        { "name": "openssh" },
+        { "name": "sudo" },
+        { "name": "reflector" },
+        { "name": "pacman-contrib" }
+      ]
+    },
+    {
+      "name": "desktop",
+      "description": "Hyprland desktop environment and Wayland essentials",
+      "packages": [
+        { "name": "hyprland" },
+        { "name": "xdg-desktop-portal-hyprland" },
+        { "name": "sddm" },
+        { "name": "kitty" },
+        { "name": "wofi" },
+        { "name": "waybar" },
+        { "name": "hyprpaper" },
+        { "name": "polkit-kde-agent" },
+        { "name": "qt5-wayland" },
+        { "name": "qt6-wayland" },
+        { "name": "dolphin" },
+        { "name": "grim" },
+        { "name": "slurp" }
+      ]
+    },
+    {
+      "name": "development",
+      "description": "Development tools and editors",
+      "packages": [
+        { "name": "neovim" },
+        { "name": "docker" },
+        { "name": "docker-compose" },
+        { "name": "visual-studio-code-bin", "aur": true, "optional": true }
+      ]
+    },
+    {
+      "name": "multimedia",
+      "description": "Audio, video and media applications",
+      "packages": [
+        { "name": "pipewire" },
+        { "name": "pipewire-alsa" },
+        { "name": "pipewire-pulse" },
+        { "name": "wireplumber" },
+        { "name": "firefox" },
+        { "name": "mpv" },
+        { "name": "gwenview" }
+      ]
+    },
+    {
+      "name": "utilities",
+      "description": "CLI and system utilities",
+      "packages": [
+        { "name": "htop" },
+        { "name": "unzip" },
+        { "name": "wget" },
+        { "name": "curl" },
+        { "name": "tree" },
+        { "name": "jq" },
+        { "name": "man-db" },
+        { "name": "man-pages" },
+        { "name": "ripgrep" },
+        { "name": "fd" },
+        { "name": "bat" }
+      ]
+    },
+    {
+      "name": "fonts",
+      "description": "System and development fonts",
+      "packages": [
+        { "name": "ttf-firacode-nerd" },
+        { "name": "ttf-dejavu" },
+        { "name": "noto-fonts" },
+        { "name": "noto-fonts-emoji" }
+      ]
+    }
+  ]
+}

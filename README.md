@@ -15,6 +15,8 @@ Automated Arch Linux installation script based on the [official installation gui
 | `chroot-setup.sh` | System configuration executed inside `arch-chroot` (called by `install.sh`) |
 | `update.sh` | Daily automated update script deployed to the installed system via systemd timer |
 | `btrfs-restore.sh` | Restore root filesystem from a btrfs pre-upgrade snapshot |
+| `packages.json` | Declarative package manifest — edit to define desired packages |
+| `install-packages.sh` | Post-install package installer — reads `packages.json` and installs packages |
 
 **Usage (TUI — recommended):**
 
@@ -88,3 +90,70 @@ Automated Arch Linux installation script based on the [official installation gui
 - Full install log saved to `/var/log/arch-install.log`
 
 > **Warning:** This script will erase all data on the target disk. Review the configuration carefully before running.
+
+---
+
+#### Post-install package management
+
+After the OS is installed and booted, use `packages.json` and `install-packages.sh` to declaratively install your desired packages.
+
+**`packages.json` format:**
+
+```json
+{
+  "distro": "archlinux",
+  "packageManager": "pacman",
+  "aurHelper": "yay",
+  "categories": [
+    {
+      "name": "base",
+      "description": "Essential system packages",
+      "packages": [
+        { "name": "git" },
+        { "name": "visual-studio-code-bin", "aur": true, "optional": true }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Level | Description |
+|---|---|---|
+| `distro` | root | Linux distribution identifier |
+| `packageManager` | root | Package manager command (`pacman`, `apt`, `dnf`, `zypper`) |
+| `aurHelper` | root | AUR helper command, e.g. `yay` or `paru` (Arch only, optional) |
+| `categories[].name` | category | Category identifier |
+| `categories[].description` | category | Human-readable description (optional) |
+| `categories[].packages[].name` | package | Package name for the distro's package manager |
+| `categories[].packages[].aur` | package | Install via AUR helper instead of pacman (default: `false`) |
+| `categories[].packages[].optional` | package | Skip on failure without aborting (default: `false`) |
+
+**Usage:**
+
+```bash
+# Preview without installing
+bash install-packages.sh --dry-run
+
+# Install all packages
+bash install-packages.sh
+
+# Install only specific categories
+bash install-packages.sh --category base --category utilities
+
+# Use a custom config path
+bash install-packages.sh --config /path/to/packages.json
+
+# Skip AUR packages
+bash install-packages.sh --no-aur
+```
+
+**Expanding to other distributions:**
+
+Create a new directory following the same structure (e.g. `debian/`, `fedora/`) with its own `packages.json` and `install-packages.sh`. The `packageManager` field determines the install command used:
+
+| `packageManager` | Install command |
+|---|---|
+| `pacman` | `sudo pacman -S --noconfirm --needed` |
+| `apt` | `sudo apt-get install -y` |
+| `dnf` | `sudo dnf install -y` |
+| `zypper` | `sudo zypper install -y` |
