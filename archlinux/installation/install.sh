@@ -824,7 +824,17 @@ configure_system() {
     # Verify companion scripts are present
     [[ -f "${script_dir}/chroot-setup.sh" ]] || die "chroot-setup.sh not found next to install.sh"
     [[ -f "${script_dir}/update.sh" ]]        || die "update.sh not found next to install.sh"
-    [[ -f "${script_dir}/../tools/snapshot-manager.sh" ]] || die "snapshot-manager.sh not found in tools/"
+
+    # snapshot-manager.sh lives in tools/ in the repo, but may be copied as a
+    # sibling when launched from the TUI or automated installer work directory.
+    local snapshot_manager=""
+    if [[ -f "${script_dir}/../tools/snapshot-manager.sh" ]]; then
+        snapshot_manager="${script_dir}/../tools/snapshot-manager.sh"
+    elif [[ -f "${script_dir}/snapshot-manager.sh" ]]; then
+        snapshot_manager="${script_dir}/snapshot-manager.sh"
+    else
+        die "snapshot-manager.sh not found (checked ../tools/ and script directory)"
+    fi
 
     [[ -f "${script_dir}/update-check.sh" ]] || die "update-check.sh not found next to install.sh"
 
@@ -832,7 +842,7 @@ configure_system() {
     # arch-chroot mounts a fresh tmpfs on /tmp that hides existing files)
     cp "${script_dir}/chroot-setup.sh" /mnt/root/chroot-setup.sh
     cp "${script_dir}/update.sh"       /mnt/root/update.sh
-    cp "${script_dir}/../tools/snapshot-manager.sh" /mnt/root/snapshot-manager.sh
+    cp "$snapshot_manager" /mnt/root/snapshot-manager.sh
     cp "${script_dir}/update-check.sh" /mnt/root/update-check.sh
 
     # Substitute placeholder variables (non-sensitive only)
