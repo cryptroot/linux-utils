@@ -152,8 +152,8 @@ check_fstab() {
     fi
 
     if [[ "$ROOT_FS" == "btrfs" ]]; then
-        if ! grep -q 'subvol=@' /etc/fstab; then
-            _detail "/etc/fstab: btrfs root should have subvol=@"
+        if ! grep -qE 'subvol=/?@[,)]' /etc/fstab && ! grep -qE 'subvol=/?@$' /etc/fstab; then
+            _detail "/etc/fstab: btrfs root should have subvol=@ or subvol=/@"
             ok=false
         fi
     fi
@@ -175,7 +175,8 @@ check_fstab() {
 check_initramfs() {
     local ok=true
     local img="/boot/initramfs-${KERNEL}.img"
-    local fallback="/boot/initramfs-${KERNEL}-fallback.img"
+    local fallback_hyphen="/boot/initramfs-${KERNEL}-fallback.img"
+    local fallback_underscore="/boot/initramfs-${KERNEL}_fallback.img"
 
     if [[ -f "$img" ]]; then
         local size
@@ -189,8 +190,8 @@ check_initramfs() {
         ok=false
     fi
 
-    if [[ ! -f "$fallback" ]]; then
-        _detail "$fallback not found"
+    if [[ ! -f "$fallback_hyphen" && ! -f "$fallback_underscore" ]]; then
+        _detail "fallback initramfs not found (checked ${fallback_hyphen} and ${fallback_underscore})"
         ok=false
     fi
 
@@ -226,7 +227,11 @@ check_locale() {
     fi
 
     if command -v locale &>/dev/null; then
-        if ! locale -a 2>/dev/null | grep -qi "$(echo "$LOCALE" | sed 's/\./-/' | sed 's/\./.*/g')"; then
+        # locale -a outputs e.g. "en_US.utf8" while config uses "en_US.UTF-8"
+        # Normalise by stripping the encoding suffix and matching the base name
+        local locale_base
+        locale_base=$(echo "$LOCALE" | cut -d. -f1)
+        if ! locale -a 2>/dev/null | grep -qi "^${locale_base}"; then
             _detail "locale '$LOCALE' not found in locale -a output"
             ok=false
         fi
