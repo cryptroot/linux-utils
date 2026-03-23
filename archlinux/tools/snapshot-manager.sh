@@ -30,6 +30,9 @@
 
 set -euo pipefail
 
+# Global state for restore cleanup trap (must be script-scoped for EXIT trap)
+_restore_mnt=""
+
 # ── Colours & symbols ────────────────────────────────────────────────────────
 BOLD='\033[1m'
 RED='\033[0;31m'
@@ -510,24 +513,28 @@ cmd_restore() {
     fi
 
     # ── Mount and restore ────────────────────────────────────────────────
-    local mnt
-    mnt="$(mktemp -d /tmp/snapshot-restore-XXXXXX)"
+    # Declared at script scope so the EXIT trap can access it after cmd_restore returns
+    _restore_mnt="$(mktemp -d /tmp/snapshot-restore-XXXXXX)"
+    local mnt="$_restore_mnt"
 
-    cleanup() {
-        if mountpoint -q "$mnt" 2>/dev/null; then
+    _restore_cleanup() {
+        local m="${_restore_mnt:-}"
+        [[ -n "$m" ]] || return 0
+        if mountpoint -q "$m" 2>/dev/null; then
             # Rollback if interrupted mid-restore
-            if [[ -d "$mnt/@.broken" && ! -d "$mnt/@" ]]; then
+            if [[ -d "$m/@.broken" && ! -d "$m/@" ]]; then
                 warn "Incomplete restore detected — rolling back @.broken to @"
-                mv "$mnt/@.broken" "$mnt/@" 2>/dev/null || warn "Rollback failed — manually run: mv @.broken @"
+                mv "$m/@.broken" "$m/@" 2>/dev/null || warn "Rollback failed — manually run: mv @.broken @"
             fi
-            if [[ -d "$mnt/@.new" ]]; then
-                btrfs subvolume delete "$mnt/@.new" 2>/dev/null || true
+            if [[ -d "$m/@.new" ]]; then
+                btrfs subvolume delete "$m/@.new" 2>/dev/null || true
             fi
-            umount "$mnt" 2>/dev/null || true
+            umount "$m" 2>/dev/null || true
         fi
-        rmdir "$mnt" 2>/dev/null || true
+        rmdir "$m" 2>/dev/null || true
+        _restore_mnt=""
     }
-    trap cleanup EXIT INT TERM
+    trap _restore_cleanup EXIT INT TERM
 
     step "Mounting top-level btrfs volume from $device"
     mount -t btrfs -o subvolid=5 "$device" "$mnt"
