@@ -361,8 +361,10 @@ _list_snapshots_offline() {
 }
 
 # Detect or prompt for the target btrfs device.
+# Sets the variable named by $1 (passed by reference via nameref).
 _detect_btrfs_device() {
-    local device=""
+    local -n _result_dev="$1"
+    _result_dev=""
 
     # Try the running system's root mount first
     local root_source
@@ -370,20 +372,20 @@ _detect_btrfs_device() {
     if [[ -n "$root_source" ]]; then
         root_source="${root_source%%\[*}"
         if blkid -o value -s TYPE "$root_source" 2>/dev/null | grep -q '^btrfs$'; then
-            device="$root_source"
+            _result_dev="$root_source"
         fi
     fi
 
     # If root is not btrfs (Live ISO), scan for btrfs devices
-    if [[ -z "$device" ]]; then
+    if [[ -z "$_result_dev" ]]; then
         local btrfs_devs=()
         while IFS= read -r dev; do
             [[ -n "$dev" ]] && btrfs_devs+=("$dev")
         done < <(blkid -t TYPE=btrfs -o device 2>/dev/null)
 
         if [[ ${#btrfs_devs[@]} -eq 1 ]]; then
-            device="${btrfs_devs[0]}"
-            log "Auto-detected btrfs device: $device"
+            _result_dev="${btrfs_devs[0]}"
+            log "Auto-detected btrfs device: $_result_dev"
         elif [[ ${#btrfs_devs[@]} -gt 1 ]]; then
             step "Multiple btrfs devices found"
             local i=1
@@ -398,7 +400,7 @@ _detect_btrfs_device() {
             local choice
             read -rp "Select device [1-${#btrfs_devs[@]}]: " choice
             if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#btrfs_devs[@]} )); then
-                device="${btrfs_devs[$((choice - 1))]}"
+                _result_dev="${btrfs_devs[$((choice - 1))]}"
             else
                 die "Invalid selection."
             fi
@@ -406,7 +408,7 @@ _detect_btrfs_device() {
     fi
 
     # Still nothing — check for LUKS partitions that might contain btrfs
-    if [[ -z "$device" ]]; then
+    if [[ -z "$_result_dev" ]]; then
         local luks_parts=()
         while IFS= read -r dev; do
             [[ -n "$dev" ]] && luks_parts+=("$dev")
@@ -426,12 +428,12 @@ _detect_btrfs_device() {
             read -rp "Unlock a LUKS partition? [1-${#luks_parts[@]}, or n to cancel]: " choice
             if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#luks_parts[@]} )); then
                 local luks_dev="${luks_parts[$((choice - 1))]}"
-                local mapper_name="cryptroot"
+                local mapper_name mapper_name_input
                 read -rp "Mapper name [cryptroot]: " mapper_name_input
-                [[ -n "$mapper_name_input" ]] && mapper_name="$mapper_name_input"
+                mapper_name="${mapper_name_input:-cryptroot}"
                 cryptsetup open "$luks_dev" "$mapper_name" || die "Failed to unlock $luks_dev"
                 log "Unlocked $luks_dev as /dev/mapper/$mapper_name"
-                device="/dev/mapper/$mapper_name"
+                _result_dev="/dev/mapper/$mapper_name"
             else
                 die "No btrfs devices available. Unlock your LUKS volume first."
             fi
@@ -439,8 +441,6 @@ _detect_btrfs_device() {
             die "No btrfs or LUKS devices found."
         fi
     fi
-
-    echo "$device"
 }
 
 cmd_restore() {
@@ -483,7 +483,7 @@ cmd_restore() {
             die "'$device' does not contain a btrfs filesystem."
         fi
     else
-        device=$(_detect_btrfs_device)
+        _detect_btrfs_device device
     fi
 
     # ── Live-system check ────────────────────────────────────────────────
