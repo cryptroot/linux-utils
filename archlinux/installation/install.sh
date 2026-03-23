@@ -8,7 +8,7 @@
 #   install-tui.sh  — interactive TUI wizard (recommended entry point)
 #   chroot-setup.sh — system configuration executed inside arch-chroot
 #   update.sh       — daily update script deployed to the installed system
-#   btrfs-restore.sh — restore root filesystem from a btrfs snapshot
+#   ../tools/snapshot-manager.sh — manage and restore btrfs snapshots
 #
 # Usage:
 #   1. Boot from the Arch Linux installation medium
@@ -824,7 +824,7 @@ configure_system() {
     # Verify companion scripts are present
     [[ -f "${script_dir}/chroot-setup.sh" ]] || die "chroot-setup.sh not found next to install.sh"
     [[ -f "${script_dir}/update.sh" ]]        || die "update.sh not found next to install.sh"
-    [[ -f "${script_dir}/btrfs-restore.sh" ]] || die "btrfs-restore.sh not found next to install.sh"
+    [[ -f "${script_dir}/../tools/snapshot-manager.sh" ]] || die "snapshot-manager.sh not found in tools/"
 
     [[ -f "${script_dir}/update-check.sh" ]] || die "update-check.sh not found next to install.sh"
 
@@ -832,7 +832,7 @@ configure_system() {
     # arch-chroot mounts a fresh tmpfs on /tmp that hides existing files)
     cp "${script_dir}/chroot-setup.sh" /mnt/root/chroot-setup.sh
     cp "${script_dir}/update.sh"       /mnt/root/update.sh
-    cp "${script_dir}/btrfs-restore.sh" /mnt/root/btrfs-restore.sh
+    cp "${script_dir}/../tools/snapshot-manager.sh" /mnt/root/snapshot-manager.sh
     cp "${script_dir}/update-check.sh" /mnt/root/update-check.sh
 
     # Substitute placeholder variables (non-sensitive only)
@@ -875,10 +875,10 @@ configure_system() {
         USER_PASSWORD="${USER_PASSWORD}" \
         /root/chroot-setup.sh
 
-    # Deploy btrfs-restore.sh for convenient access from the installed system
+    # Deploy snapshot-manager for convenient access from the installed system
     if [[ "$ROOT_FS" == "btrfs" ]]; then
-        install -Dm0755 /mnt/root/btrfs-restore.sh /mnt/usr/local/bin/btrfs-restore
-        log "btrfs-restore deployed to /usr/local/bin/btrfs-restore"
+        install -Dm0755 /mnt/root/snapshot-manager.sh /mnt/usr/local/bin/snapshot-manager
+        log "snapshot-manager deployed to /usr/local/bin/snapshot-manager"
     fi
 
     # Stage verify-install.sh for post-install smoke test
@@ -900,7 +900,7 @@ configure_system() {
     fi
 
     # Clean up staging files (keep verify-install.sh for run_verification)
-    rm -f /mnt/root/chroot-setup.sh /mnt/root/update.sh /mnt/root/btrfs-restore.sh /mnt/root/update-check.sh
+    rm -f /mnt/root/chroot-setup.sh /mnt/root/update.sh /mnt/root/snapshot-manager.sh /mnt/root/update-check.sh
 
     # Clean pacman package cache to save disk space
     step "Cleaning pacman package cache"

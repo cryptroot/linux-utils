@@ -11,8 +11,8 @@
 # Requirements:
 #   dialog — installed automatically if missing (requires internet + pacman)
 #
-# All scripts (install.sh, chroot-setup.sh, update.sh, btrfs-restore.sh) must be in
-# the same directory as this file.
+# All scripts (install.sh, chroot-setup.sh, update.sh, snapshot-manager.sh) must be in
+# the same directory or tools/ subdirectory as this file.
 
 set -euo pipefail
 
@@ -899,7 +899,7 @@ WORK_DIR="$(mktemp -d /tmp/arch-install-XXXXXX)"
 cp "$SCRIPT_DIR/install.sh"       "$WORK_DIR/install.sh"
 cp "$SCRIPT_DIR/chroot-setup.sh"  "$WORK_DIR/chroot-setup.sh"
 cp "$SCRIPT_DIR/update.sh"        "$WORK_DIR/update.sh"
-cp "$SCRIPT_DIR/btrfs-restore.sh" "$WORK_DIR/btrfs-restore.sh"
+cp "$SCRIPT_DIR/../tools/snapshot-manager.sh" "$WORK_DIR/snapshot-manager.sh"
 cp "$SCRIPT_DIR/../tools/update-check.sh" "$WORK_DIR/update-check.sh"
 
 # Apply variable substitutions to install.sh
