@@ -7,7 +7,7 @@
 #   install.sh      — this script; run it to start the installation
 #   install-tui.sh  — interactive TUI wizard (recommended entry point)
 #   chroot-setup.sh — system configuration executed inside arch-chroot
-#   update.sh       — daily update script deployed to the installed system
+#   ../tools/update-manager.sh  — update manager deployed to the installed system
 #   ../tools/snapshot-manager.sh — manage and restore btrfs snapshots
 #
 # Usage:
@@ -823,10 +823,9 @@ configure_system() {
 
     # Verify companion scripts are present
     [[ -f "${script_dir}/chroot-setup.sh" ]] || die "chroot-setup.sh not found next to install.sh"
-    [[ -f "${script_dir}/update.sh" ]]        || die "update.sh not found next to install.sh"
 
-    # snapshot-manager.sh lives in tools/ in the repo, but may be copied as a
-    # sibling when launched from the TUI or automated installer work directory.
+    # tools/ scripts live in ../tools/ in the repo, but may be copied as
+    # siblings when launched from the TUI or automated installer work directory.
     local snapshot_manager=""
     if [[ -f "${script_dir}/../tools/snapshot-manager.sh" ]]; then
         snapshot_manager="${script_dir}/../tools/snapshot-manager.sh"
@@ -836,14 +835,20 @@ configure_system() {
         die "snapshot-manager.sh not found (checked ../tools/ and script directory)"
     fi
 
-    [[ -f "${script_dir}/update-check.sh" ]] || die "update-check.sh not found next to install.sh"
+    local update_manager=""
+    if [[ -f "${script_dir}/../tools/update-manager.sh" ]]; then
+        update_manager="${script_dir}/../tools/update-manager.sh"
+    elif [[ -f "${script_dir}/update-manager.sh" ]]; then
+        update_manager="${script_dir}/update-manager.sh"
+    else
+        die "update-manager.sh not found (checked ../tools/ and script directory)"
+    fi
 
     # Stage scripts inside the new system's /root (not /tmp, because
     # arch-chroot mounts a fresh tmpfs on /tmp that hides existing files)
     cp "${script_dir}/chroot-setup.sh" /mnt/root/chroot-setup.sh
-    cp "${script_dir}/update.sh"       /mnt/root/update.sh
     cp "$snapshot_manager" /mnt/root/snapshot-manager.sh
-    cp "${script_dir}/update-check.sh" /mnt/root/update-check.sh
+    cp "$update_manager" /mnt/root/update-manager.sh
 
     # Substitute placeholder variables (non-sensitive only)
     # Passwords are passed via environment variables to avoid writing them to disk
@@ -872,7 +877,7 @@ configure_system() {
 
     sed -i \
         -e "s|__NOTIFY_USER__|${USERNAME}|g" \
-        /mnt/root/update.sh
+        /mnt/root/update-manager.sh
 
     chmod +x /mnt/root/chroot-setup.sh
     # Pass passwords via environment so they are never written to the staged script file.
@@ -910,7 +915,7 @@ configure_system() {
     fi
 
     # Clean up staging files (keep verify-install.sh for run_verification)
-    rm -f /mnt/root/chroot-setup.sh /mnt/root/update.sh /mnt/root/snapshot-manager.sh /mnt/root/update-check.sh
+    rm -f /mnt/root/chroot-setup.sh /mnt/root/snapshot-manager.sh /mnt/root/update-manager.sh
 
     # Clean pacman package cache to save disk space
     step "Cleaning pacman package cache"
