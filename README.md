@@ -2,6 +2,8 @@
 
 A collection of Linux utilities and helpers.
 
+> **Warning:** Some of these scripts will erase all data on the target disk. Review the configuration carefully before running.
+
 ## Quick start
 
 The top-level `install.sh` is a dispatcher that routes to the correct OS-specific installer:
@@ -127,4 +129,8 @@ Passwords can be passed via environment variables (`ROOT_PASSWORD`, `USER_PASSWO
 - `--dry-run` mode to preview configuration without making changes
 - Full install log saved to `/var/log/arch-install.log`
 
-> **Warning:** This script will erase all data on the target disk. Review the configuration carefully before running.
+### Testing
+
+- **Non-installation changes:** These are tested on a pre-existing Linux install. These do not require additional testing in a new environment if the scripts are single-use - i.e. they self-manage their own dependencies and handle their own logic - see `archlinux/tools/system-check.sh` as an example.
+
+- **Installation changes:** [**IMPORTANT**] These *MUST* be tested end-to-end using a new install. Personally, I have been using virt-manager to create QEMU VMs to test any installation logic. However, it would be better if a machine running on real hardware could be used - I've only used AMD hardware so the `nvidia` and `intel` installations are potentially flaky / non-functional in some circumstances. Since I've been using `archlinux` to do all my work, I've used the scripts to do my own installs too as a self-test.
