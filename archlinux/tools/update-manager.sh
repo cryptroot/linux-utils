@@ -3,8 +3,6 @@
 # Arch Linux update manager — status display, automated upgrades, and
 # systemd timer management in a single entry point.
 #
-# Consolidates the former update.sh (arch-update) and update-check.sh scripts.
-#
 # Usage:
 #   update-manager <command> [options]
 #
@@ -30,17 +28,12 @@ set -euo pipefail
 # ── Constants ────────────────────────────────────────────────────────────────
 
 LOG="/var/log/update-manager.log"
-LOG_FALLBACK="/var/log/arch-update.log"
 CONF_FILE="/etc/update-manager.conf"
 NOTIFY_USER="__NOTIFY_USER__"
 
 SERVICE_NAME="update-manager"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 TIMER_FILE="/etc/systemd/system/${SERVICE_NAME}.timer"
-
-OLD_SERVICE_NAME="arch-update"
-OLD_SERVICE_FILE="/etc/systemd/system/${OLD_SERVICE_NAME}.service"
-OLD_TIMER_FILE="/etc/systemd/system/${OLD_SERVICE_NAME}.timer"
 
 DEFAULT_CRITICAL_PKGS="linux|linux-lts|linux-zen|linux-hardened|glibc|systemd|systemd-libs"
 DEFAULT_ONCALENDAR="daily"
@@ -181,11 +174,8 @@ _notify() {
 # ── Log session parsing ─────────────────────────────────────────────────────
 
 _resolve_log() {
-    # Use primary log; fall back to legacy log from arch-update
     if [[ -r "$LOG" ]]; then
         echo "$LOG"
-    elif [[ -r "$LOG_FALLBACK" ]]; then
-        echo "$LOG_FALLBACK"
     else
         return 1
     fi
@@ -587,17 +577,6 @@ cmd_run() {
 
 # ── cmd_schedule ─────────────────────────────────────────────────────────────
 
-_cleanup_old_units() {
-    # Remove legacy arch-update units if they exist
-    if [[ -f "$OLD_SERVICE_FILE" ]] || [[ -f "$OLD_TIMER_FILE" ]]; then
-        _warn "Found legacy ${OLD_SERVICE_NAME} units — cleaning up"
-        systemctl disable --now "${OLD_SERVICE_NAME}.timer" 2>/dev/null || true
-        rm -f "$OLD_SERVICE_FILE" "$OLD_TIMER_FILE"
-        systemctl daemon-reload
-        _log "Removed legacy ${OLD_SERVICE_NAME} units"
-    fi
-}
-
 _write_units() {
     local oncalendar="${1:-$DEFAULT_ONCALENDAR}"
 
@@ -630,7 +609,6 @@ EOF
 
 cmd_schedule_enable() {
     _require_root
-    _cleanup_old_units
 
     local oncalendar="$DEFAULT_ONCALENDAR"
     _write_units "$oncalendar"
@@ -648,8 +626,6 @@ cmd_schedule_disable() {
     systemctl disable --now "${SERVICE_NAME}.timer" 2>/dev/null || true
     rm -f "$SERVICE_FILE" "$TIMER_FILE"
     systemctl daemon-reload
-
-    _cleanup_old_units
 
     _log "Timer disabled and unit files removed"
 }
