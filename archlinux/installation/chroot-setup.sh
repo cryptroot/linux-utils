@@ -542,12 +542,12 @@ fi
 # Daily system update — systemd timer
 # ------------------------------------------------------------------------------
 if [[ "$ENABLE_AUTO_UPDATE" == "true" ]]; then
-    log "Installing daily system update (systemd timer)"
+    log "Installing daily system update (update-manager)"
     pacman -S --noconfirm --needed pacman-contrib
-    install -Dm0755 /root/update.sh /usr/local/bin/arch-update
+    install -Dm0755 /root/update-manager.sh /usr/local/bin/update-manager
 
-    cat > /etc/arch-update.conf << EOF
-# arch-update configuration — edit to customise behaviour
+    cat > /etc/update-manager.conf << EOF
+# update-manager configuration — edit to customise behaviour
 # ERE pattern of package names treated as critical (auto-upgrade is deferred when matched).
 # Separate alternatives with |
 CRITICAL_PKGS="linux|linux-lts|linux-zen|linux-hardened|glibc|systemd|systemd-libs"
@@ -555,37 +555,15 @@ CRITICAL_PKGS="linux|linux-lts|linux-zen|linux-hardened|glibc|systemd|systemd-li
 # Reflector country filter for mirror ranking (e.g., "US" or "US,DE"; empty = auto)
 REFLECTOR_COUNTRY="${REFLECTOR_COUNTRY}"
 EOF
-    log "arch-update configuration deployed to /etc/arch-update.conf"
+    log "update-manager configuration deployed to /etc/update-manager.conf"
 
-    cat > /etc/systemd/system/arch-update.service << 'EOF'
-[Unit]
-Description=Daily Arch Linux system update
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/arch-update
-EOF
-
-    cat > /etc/systemd/system/arch-update.timer << 'EOF'
-[Unit]
-Description=Daily Arch Linux system update timer
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
-    systemctl enable arch-update.timer
-    log "arch-update.timer enabled"
+    # Use the script's own schedule command to write + enable systemd units
+    /usr/local/bin/update-manager schedule enable
+    log "update-manager.timer enabled"
 
     mkdir -p /etc/logrotate.d
-    cat > /etc/logrotate.d/arch-update << 'EOF'
-/var/log/arch-update.log {
+    cat > /etc/logrotate.d/update-manager << 'EOF'
+/var/log/update-manager.log {
     weekly
     rotate 4
     compress
@@ -593,26 +571,22 @@ EOF
     notifempty
 }
 EOF
-    log "Logrotate config installed for /var/log/arch-update.log"
+    log "Logrotate config installed for /var/log/update-manager.log"
 
-    # Deploy update-check for bashrc status display
-    install -Dm0755 /root/update-check.sh /usr/local/bin/update-check
-    log "update-check deployed to /usr/local/bin/update-check"
-
-    # Add update-check to the user's .bashrc
+    # Add update-manager status to the user's .bashrc
     if [[ -n "$USERNAME" ]]; then
         _bashrc="/home/${USERNAME}/.bashrc"
-        _marker="# arch-update status"
+        _marker="# update-manager status"
         if [[ -f "$_bashrc" ]] && grep -qF "$_marker" "$_bashrc"; then
-            log "update-check already present in $_bashrc — skipping"
+            log "update-manager already present in $_bashrc — skipping"
         else
             cat >> "$_bashrc" << 'BASHRC'
 
-# arch-update status
-command -v update-check &>/dev/null && update-check
+# update-manager status
+command -v update-manager &>/dev/null && update-manager status
 BASHRC
             chown "$USERNAME":"$USERNAME" "$_bashrc"
-            log "update-check added to $_bashrc"
+            log "update-manager status added to $_bashrc"
         fi
     fi
 else
