@@ -40,7 +40,7 @@ Automated Arch Linux installation script based on the [official installation gui
 3. Install git and clone the repo:
    ```bash
    pacman -Sy git
-   git clone https://github.com/Molybdenumdisulfide/linux-utils.git
+   git clone https://github.com/cryptroot/linux-utils.git
    ```
 4. Run `install.sh` from the root directory or `cd linux-utils/archlinux`
 
