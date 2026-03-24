@@ -28,7 +28,7 @@ Automated Arch Linux installation script based on the [official installation gui
 | `installation/install-tui.sh` | Interactive TUI wizard — recommended entry point |
 | `installation/install.sh` | Headless installer — edit config variables at the top, then run |
 | `installation/chroot-setup.sh` | System configuration executed inside `arch-chroot` (called by `install.sh`) |
-| `installation/update.sh` | Daily automated update script deployed to the installed system via systemd timer |
+| `tools/update-manager.sh` | Update manager — status display, automated upgrades, and systemd timer management |
 | `installation/automated.sh` | Non-interactive installer driven by a named JSON config |
 | `tools/snapshot-manager.sh` | Interactive snapper wrapper — list, create, delete, diff, and restore btrfs snapshots |
 | `config/install.json` | Named configuration presets for automated installs |
@@ -118,7 +118,7 @@ Passwords can be passed via environment variables (`ROOT_PASSWORD`, `USER_PASSWO
 - Optional user account with full sudo access
 - Optional AUR helper installation (`yay` or `paru`)
 - LUKS2 full-disk encryption (root, home, and swap)
-- Daily automated system update via systemd timer (`update.sh`)
+- Daily automated system update via systemd timer (`update-manager`)
 - AUR package updates via `yay`/`paru` (when installed)
 - Btrfs snapshots managed by [snapper](https://wiki.archlinux.org/title/Snapper) with `snapshot-manager` CLI (list, create, delete, diff, restore)
   - Automatic timeline snapshots (hourly, with configurable retention)

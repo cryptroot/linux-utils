@@ -16,7 +16,7 @@
 # Requirements:
 #   jq — for parsing install.json
 #
-# All sibling scripts (install.sh, chroot-setup.sh, update.sh, snapshot-manager.sh)
+# All sibling scripts (install.sh, chroot-setup.sh, snapshot-manager.sh, update-manager.sh)
 # must be in the same directory (or tools/) as this file.
 #
 set -euo pipefail
@@ -109,10 +109,9 @@ WORK_DIR="$(mktemp -d /tmp/arch-auto-XXXXXX)"
 
 cp "$SCRIPT_DIR/install.sh"        "$WORK_DIR/install.sh"
 cp "$SCRIPT_DIR/chroot-setup.sh"   "$WORK_DIR/chroot-setup.sh"
-cp "$SCRIPT_DIR/update.sh"         "$WORK_DIR/update.sh"
 cp "$SCRIPT_DIR/../tools/snapshot-manager.sh"  "$WORK_DIR/snapshot-manager.sh"
 cp "$SCRIPT_DIR/verify-install.sh" "$WORK_DIR/verify-install.sh"
-cp "$SCRIPT_DIR/../tools/update-check.sh" "$WORK_DIR/update-check.sh"
+cp "$SCRIPT_DIR/../tools/update-manager.sh" "$WORK_DIR/update-manager.sh"
 
 CFG="$WORK_DIR/install.sh"
 
