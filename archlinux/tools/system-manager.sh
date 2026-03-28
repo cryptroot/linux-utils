@@ -158,11 +158,11 @@ cmd_status() {
     local latest_hs=0
     local now
     now=$(date +%s)
-    while IFS= read -r ts; do
-        if (( ts > latest_hs )); then
+    while IFS=$'\t' read -r _ ts; do
+        if [[ -n "$ts" ]] && (( ts > latest_hs )); then
             latest_hs=$ts
         fi
-    done < <(echo "$wg_output" | awk '/latest handshake:/ { print $NF }' 2>/dev/null || true)
+    done < <(sudo wg show "$iface" latest-handshakes 2>/dev/null || true)
 
     local hs_text="no handshake"
     if (( latest_hs > 0 )); then
