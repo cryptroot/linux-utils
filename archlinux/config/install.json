@@ -23,7 +23,8 @@
       "USE_REFLECTOR": "true",
       "REFLECTOR_COUNTRY": "",
       "ENABLE_MULTILIB": "false",
-      "ENABLE_AUTO_UPDATE": "true"
+      "ENABLE_AUTO_UPDATE": "true",
+      "WIREGUARD_CONFIG": ""
     },
     "hyprland-qemu": {
       "description": "Hyprland tiling WM with btrfs and encryption",
@@ -48,7 +49,8 @@
       "USE_REFLECTOR": "true",
       "REFLECTOR_COUNTRY": "",
       "ENABLE_MULTILIB": "false",
-      "ENABLE_AUTO_UPDATE": "true"
+      "ENABLE_AUTO_UPDATE": "true",
+      "WIREGUARD_CONFIG": ""
     }
   }
 }

@@ -44,7 +44,7 @@ REQUIRED_KEYS=(
 OPTIONAL_KEYS=(
     EFI_SIZE SWAP_SIZE ROOT_SIZE LUKS MICROCODE GPU_DRIVER DESKTOP_ENV
     EXTRA_PACKAGES USERNAME AUR_HELPER USE_REFLECTOR REFLECTOR_COUNTRY
-    ENABLE_MULTILIB ENABLE_AUTO_UPDATE description
+    ENABLE_MULTILIB ENABLE_AUTO_UPDATE WIREGUARD_CONFIG description
 )
 
 # All known keys (required + optional)
@@ -236,6 +236,18 @@ validate_profile() {
 
     if [[ -n "$aur_helper" && -z "$username" ]]; then
         _add_error "AUR_HELPER is set to '$aur_helper' but USERNAME is empty (AUR helper requires a regular user)"
+    fi
+
+    # WireGuard config validation
+    local wg_config
+    wg_config=$(echo "$profile_json" | jq -r '.WIREGUARD_CONFIG // empty')
+    if [[ -n "$wg_config" ]]; then
+        if [[ "$wg_config" != *.conf ]]; then
+            _add_error "WIREGUARD_CONFIG: must end in .conf (got '$wg_config')"
+        fi
+        if [[ -z "$username" ]]; then
+            _add_error "WIREGUARD_CONFIG is set but USERNAME is empty (sudoers requires a regular user)"
+        fi
     fi
 
     if [[ "$luks" == "true" ]]; then

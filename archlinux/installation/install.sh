@@ -97,6 +97,11 @@ ENABLE_AUTO_UPDATE="true"
 # Options: yay | paru | "" (none)
 AUR_HELPER=""
 
+# WireGuard VPN configuration file path (on the live ISO / install environment)
+# The file will be copied into /etc/wireguard/ and the interface auto-started on boot.
+# Leave empty to skip WireGuard setup.
+WIREGUARD_CONFIG=""
+
 # Encrypt root (and home) partition with LUKS2 at rest? (true/false)
 LUKS="false"
 LUKS_PASSWORD="${LUKS_PASSWORD:-}"     # LUKS passphrase — prompted interactively if empty
@@ -751,7 +756,6 @@ build_package_list() {
             # nvidia is kernel-specific; pick the right variant
             case "$KERNEL" in
                 linux)          _pkgs+=(nvidia) ;;
-                linux-lts)      _pkgs+=(nvidia-lts) ;;
                 *)              _pkgs+=(nvidia-dkms) ;;
             esac
             _pkgs+=("${KERNEL}-headers" nvidia-utils nvidia-settings)
@@ -844,11 +848,29 @@ configure_system() {
         die "update-manager.sh not found (checked ../tools/ and script directory)"
     fi
 
+    local system_manager=""
+    if [[ -f "${script_dir}/../tools/system-manager.sh" ]]; then
+        system_manager="${script_dir}/../tools/system-manager.sh"
+    elif [[ -f "${script_dir}/system-manager.sh" ]]; then
+        system_manager="${script_dir}/system-manager.sh"
+    else
+        die "system-manager.sh not found (checked ../tools/ and script directory)"
+    fi
+
     # Stage scripts inside the new system's /root (not /tmp, because
     # arch-chroot mounts a fresh tmpfs on /tmp that hides existing files)
     cp "${script_dir}/chroot-setup.sh" /mnt/root/chroot-setup.sh
     cp "$snapshot_manager" /mnt/root/snapshot-manager.sh
     cp "$update_manager" /mnt/root/update-manager.sh
+    cp "$system_manager" /mnt/root/system-manager.sh
+
+    # Stage WireGuard config if specified and available
+    if [[ -n "${WIREGUARD_CONFIG:-}" && -f "$WIREGUARD_CONFIG" ]]; then
+        local _wg_basename
+        _wg_basename="$(basename "$WIREGUARD_CONFIG")"
+        cp "$WIREGUARD_CONFIG" "/mnt/root/${_wg_basename}"
+        log "WireGuard config staged: ${_wg_basename}"
+    fi
 
     # Substitute placeholder variables (non-sensitive only)
     # Passwords are passed via environment variables to avoid writing them to disk
@@ -873,6 +895,7 @@ configure_system() {
         -e "s|__SWAP_PART__|${SWAP_PART:-}|g" \
         -e "s|__AUR_HELPER__|${AUR_HELPER}|g" \
         -e "s|__REFLECTOR_COUNTRY__|${REFLECTOR_COUNTRY}|g" \
+        -e "s|__WIREGUARD_CONFIG__|${WIREGUARD_CONFIG:-}|g" \
         /mnt/root/chroot-setup.sh
 
     sed -i \
@@ -910,12 +933,13 @@ configure_system() {
             -e "s|__LUKS__|${LUKS}|g" \
             -e "s|__LUKS_HOME_UUID__|${LUKS_HOME_UUID}|g" \
             -e "s|__DESKTOP_ENV__|${DESKTOP_ENV}|g" \
+            -e "s|__WIREGUARD_CONFIG__|${WIREGUARD_CONFIG:-}|g" \
             /mnt/root/verify-install.sh
         chmod +x /mnt/root/verify-install.sh
     fi
 
     # Clean up staging files (keep verify-install.sh for run_verification)
-    rm -f /mnt/root/chroot-setup.sh /mnt/root/snapshot-manager.sh /mnt/root/update-manager.sh
+    rm -f /mnt/root/chroot-setup.sh /mnt/root/snapshot-manager.sh /mnt/root/update-manager.sh /mnt/root/system-manager.sh
 
     # Clean pacman package cache to save disk space
     step "Cleaning pacman package cache"
@@ -1084,6 +1108,7 @@ main() {
             -e "s|__LUKS__|${LUKS}|g" \
             -e "s|__LUKS_HOME_UUID__|${LUKS_HOME_UUID}|g" \
             -e "s|__DESKTOP_ENV__|${DESKTOP_ENV}|g" \
+            -e "s|__WIREGUARD_CONFIG__|${WIREGUARD_CONFIG:-}|g" \
             /mnt/root/verify-install.sh
         chmod +x /mnt/root/verify-install.sh
         step "Running post-install verification (standalone)"

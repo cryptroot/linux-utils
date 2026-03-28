@@ -112,6 +112,7 @@ cp "$SCRIPT_DIR/chroot-setup.sh"   "$WORK_DIR/chroot-setup.sh"
 cp "$SCRIPT_DIR/../tools/snapshot-manager.sh"  "$WORK_DIR/snapshot-manager.sh"
 cp "$SCRIPT_DIR/verify-install.sh" "$WORK_DIR/verify-install.sh"
 cp "$SCRIPT_DIR/../tools/update-manager.sh" "$WORK_DIR/update-manager.sh"
+cp "$SCRIPT_DIR/../tools/system-manager.sh" "$WORK_DIR/system-manager.sh"
 
 CFG="$WORK_DIR/install.sh"
 
@@ -141,7 +142,7 @@ CONFIG_KEYS=(
     TIMEZONE LOCALE KEYMAP HOSTNAME KERNEL MICROCODE
     BOOTLOADER GPU_DRIVER DESKTOP_ENV EXTRA_PACKAGES
     USERNAME AUR_HELPER USE_REFLECTOR REFLECTOR_COUNTRY
-    ENABLE_MULTILIB ENABLE_AUTO_UPDATE
+    ENABLE_MULTILIB ENABLE_AUTO_UPDATE WIREGUARD_CONFIG
 )
 
 for key in "${CONFIG_KEYS[@]}"; do

@@ -144,6 +144,7 @@ USE_REFLECTOR="true"
 REFLECTOR_COUNTRY=""
 ENABLE_MULTILIB="false"
 ENABLE_AUTO_UPDATE="true"
+WIREGUARD_CONFIG=""
 ROOT_PASSWORD=""
 USER_PASSWORD=""
 LUKS_PASSWORD=""
@@ -153,7 +154,7 @@ LUKS_PASSWORD=""
 # ==============================================================================
 
 STEP=1
-MAX_STEP=21   # last step = passwords; handoff is post-loop
+MAX_STEP=22   # last step = passwords; handoff is post-loop
 
 while [[ "$STEP" -le "$MAX_STEP" ]]; do
     case "$STEP" in
@@ -678,9 +679,59 @@ Leave empty to use all worldwide mirrors." \
         ;;
 
     # --------------------------------------------------------------------------
-    # 20: SUMMARY
+    # 20: WIREGUARD VPN
     # --------------------------------------------------------------------------
     20)
+        if show_yesno "WireGuard VPN" \
+"Configure a WireGuard VPN connection?
+
+If you have a WireGuard .conf file (e.g. from your VPN provider),
+it will be copied into the installed system and started on boot.
+
+The config file must be accessible from this live environment
+(e.g. /root/wg0.conf on a USB or downloaded).
+
+Select No to skip."; then
+            if show_input "WireGuard Config Path" \
+"Full path to your WireGuard .conf file.
+Example: /root/wg0.conf" \
+                    "$WIREGUARD_CONFIG"; then
+                _wg_path="$(cat "$TMPFILE")"
+                if [[ -n "$_wg_path" ]]; then
+                    if [[ "$_wg_path" != *.conf ]]; then
+                        show_msg "Invalid Path" "WireGuard config must end in .conf"
+                        continue
+                    fi
+                    if [[ ! -f "$_wg_path" ]]; then
+                        if show_yesno "File Not Found" \
+"$_wg_path does not exist yet.
+
+You can copy it into the live environment before
+the installer reaches the partitioning stage.
+
+Continue with this path anyway?"; then
+                            WIREGUARD_CONFIG="$_wg_path"
+                        else
+                            continue
+                        fi
+                    else
+                        WIREGUARD_CONFIG="$_wg_path"
+                    fi
+                else
+                    WIREGUARD_CONFIG=""
+                fi
+            fi
+            STEP=$(( STEP + 1 ))
+        else
+            WIREGUARD_CONFIG=""
+            STEP=$(( STEP + 1 ))
+        fi
+        ;;
+
+    # --------------------------------------------------------------------------
+    # 21: SUMMARY
+    # --------------------------------------------------------------------------
+    21)
         _luks_disp="$LUKS"
         _reflector_disp="$USE_REFLECTOR"
         [[ -n "$REFLECTOR_COUNTRY" ]] && _reflector_disp="${USE_REFLECTOR} (country: ${REFLECTOR_COUNTRY})"
@@ -689,6 +740,7 @@ Leave empty to use all worldwide mirrors." \
         _micro_disp="${MICROCODE:-<none>}"
         _gpu_disp="${GPU_DRIVER:-<none>}"
         _de_disp="${DESKTOP_ENV:-<none>}"
+        _wg_disp="${WIREGUARD_CONFIG:-<none>}"
 
         SUMMARY="$(cat <<EOF
 ┌─────────────────────────────────────────────────────────────┐
@@ -719,6 +771,7 @@ Leave empty to use all worldwide mirrors." \
 │ Reflector            │ $_reflector_disp
 │ Multilib             │ $ENABLE_MULTILIB
 │ Auto-update          │ $ENABLE_AUTO_UPDATE
+│ WireGuard VPN        │ $_wg_disp
 └──────────────────────┴──────────────────────────────────────┘
 
 Press OK to continue to the password setup, or Cancel to go back
@@ -737,9 +790,9 @@ EOF
         ;;
 
     # --------------------------------------------------------------------------
-    # 21: PASSWORDS
+    # 22: PASSWORDS
     # --------------------------------------------------------------------------
-    21)
+    22)
         _pw_error=""
 
         # --- Root password ---
@@ -776,7 +829,7 @@ Continue with this weak password?"; then
             fi
         done
         # If user cancelled (STEP decremented inside loop), skip remaining password steps
-        [[ "$STEP" -lt 21 ]] && continue
+        [[ "$STEP" -lt 22 ]] && continue
 
         # --- User password (if username is set) ---
         if [[ -n "$USERNAME" ]]; then
@@ -818,7 +871,7 @@ Continue with this weak password?"; then
         fi
 
         # If user cancelled
-        [[ "$STEP" -lt 21 ]] && continue
+        [[ "$STEP" -lt 22 ]] && continue
 
         # --- LUKS passphrase (if encryption enabled) ---
         if [[ "$LUKS" == "true" ]]; then
@@ -862,16 +915,16 @@ Continue with this weak passphrase?"; then
         fi
 
         # If user cancelled
-        [[ "$STEP" -lt 21 ]] && continue
+        [[ "$STEP" -lt 22 ]] && continue
 
         # All passwords collected — advance to handoff
         STEP=$(( STEP + 1 ))
         ;;
 
     # --------------------------------------------------------------------------
-    # 22 (MAX_STEP + 1): GENERATE CONFIG & LAUNCH
-    # This step is handled outside the case because MAX_STEP=21 and the while
-    # condition allows STEP=22 to fall through — we break here.
+    # 23 (MAX_STEP + 1): GENERATE CONFIG & LAUNCH
+    # This step is handled outside the case because MAX_STEP=22 and the while
+    # condition allows STEP=23 to fall through — we break here.
     # --------------------------------------------------------------------------
     *)
         break
@@ -900,6 +953,7 @@ cp "$SCRIPT_DIR/install.sh"       "$WORK_DIR/install.sh"
 cp "$SCRIPT_DIR/chroot-setup.sh"  "$WORK_DIR/chroot-setup.sh"
 cp "$SCRIPT_DIR/../tools/snapshot-manager.sh" "$WORK_DIR/snapshot-manager.sh"
 cp "$SCRIPT_DIR/../tools/update-manager.sh" "$WORK_DIR/update-manager.sh"
+cp "$SCRIPT_DIR/../tools/system-manager.sh" "$WORK_DIR/system-manager.sh"
 
 # Apply variable substitutions to install.sh
 CFG="$WORK_DIR/install.sh"
@@ -948,6 +1002,7 @@ _subst USE_REFLECTOR    "$USE_REFLECTOR"
 _subst REFLECTOR_COUNTRY "$REFLECTOR_COUNTRY"
 _subst ENABLE_MULTILIB  "$ENABLE_MULTILIB"
 _subst ENABLE_AUTO_UPDATE "$ENABLE_AUTO_UPDATE"
+_subst WIREGUARD_CONFIG "$WIREGUARD_CONFIG"
 
 # Write passwords into the temp file
 # Passwords are passed via environment to avoid leaving them on disk; install.sh

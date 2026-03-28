@@ -28,6 +28,7 @@ MICROCODE="__MICROCODE__"
 LUKS="__LUKS__"
 LUKS_HOME_UUID="__LUKS_HOME_UUID__"
 DESKTOP_ENV="__DESKTOP_ENV__"
+WIREGUARD_CONFIG="__WIREGUARD_CONFIG__"
 # Sensitive — passed via environment
 USERNAME="${USERNAME:-}"
 
@@ -419,6 +420,64 @@ check_kernel() {
     fi
 }
 
+check_wireguard() {
+    if [[ -z "$WIREGUARD_CONFIG" ]]; then
+        _pass "WireGuard (not configured)"
+        return
+    fi
+
+    local ok=true
+    local wg_basename wg_iface
+    wg_basename="$(basename "$WIREGUARD_CONFIG")"
+    wg_iface="${wg_basename%.conf}"
+
+    # Package installed?
+    if ! pacman -Qi wireguard-tools &>/dev/null; then
+        _detail "wireguard-tools package is not installed"
+        ok=false
+    fi
+
+    # Config file exists with correct permissions?
+    local wg_conf="/etc/wireguard/${wg_basename}"
+    if [[ -f "$wg_conf" ]]; then
+        local perms
+        perms=$(stat -c '%a' "$wg_conf" 2>/dev/null || echo "unknown")
+        if [[ "$perms" != "600" ]]; then
+            _detail "$wg_conf has permissions $perms (expected 600)"
+            ok=false
+        fi
+    else
+        _detail "$wg_conf not found"
+        ok=false
+    fi
+
+    # Service enabled?
+    if ! systemctl is-enabled "wg-quick@${wg_iface}.service" &>/dev/null; then
+        _detail "wg-quick@${wg_iface}.service is not enabled"
+        ok=false
+    fi
+
+    # system-manager deployed?
+    if [[ ! -x /usr/local/bin/system-manager ]]; then
+        _detail "/usr/local/bin/system-manager not found or not executable"
+        ok=false
+    fi
+
+    # Sudoers for wg show?
+    if [[ -n "$USERNAME" ]]; then
+        if [[ ! -f "/etc/sudoers.d/${USERNAME}-wireguard" ]]; then
+            _detail "Sudoers drop-in /etc/sudoers.d/${USERNAME}-wireguard not found"
+            ok=false
+        fi
+    fi
+
+    if [[ "$ok" == true ]]; then
+        _pass "WireGuard ($wg_iface)"
+    else
+        _fail "WireGuard ($wg_iface)"
+    fi
+}
+
 # ==============================================================================
 # MAIN
 # ==============================================================================
@@ -437,6 +496,7 @@ check_services
 check_users
 check_crypto
 check_kernel
+check_wireguard
 
 echo ""
 if [[ "$FAIL" -eq 0 ]]; then

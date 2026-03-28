@@ -33,6 +33,7 @@ LUKS_HOME_UUID="__LUKS_HOME_UUID__"
 SWAP_PART="__SWAP_PART__"
 AUR_HELPER="__AUR_HELPER__"
 REFLECTOR_COUNTRY="__REFLECTOR_COUNTRY__"
+WIREGUARD_CONFIG="__WIREGUARD_CONFIG__"
 
 # ==============================================================================
 
@@ -591,6 +592,64 @@ BASHRC
     fi
 else
     log "Auto-update disabled (ENABLE_AUTO_UPDATE=false), skipping"
+fi
+
+# ------------------------------------------------------------------------------
+# WireGuard VPN — auto-start on boot
+# ------------------------------------------------------------------------------
+if [[ -n "$WIREGUARD_CONFIG" ]]; then
+    log "Configuring WireGuard VPN"
+    pacman -S --noconfirm --needed wireguard-tools systemd-resolvconf
+
+    _wg_basename="$(basename "$WIREGUARD_CONFIG")"
+    _wg_iface="${_wg_basename%.conf}"
+
+    if [[ -f "/root/${_wg_basename}" ]]; then
+        install -Dm0600 "/root/${_wg_basename}" "/etc/wireguard/${_wg_basename}"
+        log "WireGuard config installed to /etc/wireguard/${_wg_basename} (mode 0600)"
+    else
+        error "WireGuard config /root/${_wg_basename} not found — skipping interface setup"
+        _wg_iface=""
+    fi
+
+    if [[ -n "$_wg_iface" ]]; then
+        systemctl enable "wg-quick@${_wg_iface}.service"
+        log "wg-quick@${_wg_iface}.service enabled (auto-start on boot)"
+
+        systemctl enable systemd-resolved.service
+        log "systemd-resolved.service enabled (required for WireGuard DNS)"
+
+        install -Dm0755 /root/system-manager.sh /usr/local/bin/system-manager
+        log "system-manager deployed to /usr/local/bin/system-manager"
+
+        # Allow the regular user to query WireGuard status without a password
+        if [[ -n "$USERNAME" ]]; then
+            cat > "/etc/sudoers.d/${USERNAME}-wireguard" << WGEOF
+# Allow ${USERNAME} to read WireGuard status without a password (system-manager)
+${USERNAME} ALL=(ALL:ALL) NOPASSWD: /usr/bin/wg show
+${USERNAME} ALL=(ALL:ALL) NOPASSWD: /usr/bin/wg show *
+WGEOF
+            chmod 0440 "/etc/sudoers.d/${USERNAME}-wireguard"
+            log "sudoers NOPASSWD for 'wg show' configured for ${USERNAME}"
+
+            # Add system-manager status to the user's .bashrc
+            _bashrc="/home/${USERNAME}/.bashrc"
+            _marker="# system-manager status"
+            if [[ -f "$_bashrc" ]] && grep -qF "$_marker" "$_bashrc"; then
+                log "system-manager already present in $_bashrc — skipping"
+            else
+                cat >> "$_bashrc" << 'BASHRC'
+
+# system-manager status
+command -v system-manager &>/dev/null && system-manager status
+BASHRC
+                chown "$USERNAME":"$USERNAME" "$_bashrc"
+                log "system-manager status added to $_bashrc"
+            fi
+        fi
+    fi
+else
+    log "WireGuard not configured, skipping"
 fi
 
 # ------------------------------------------------------------------------------
