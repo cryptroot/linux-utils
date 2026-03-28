@@ -756,7 +756,6 @@ build_package_list() {
             # nvidia is kernel-specific; pick the right variant
             case "$KERNEL" in
                 linux)          _pkgs+=(nvidia) ;;
-                linux-lts)      _pkgs+=(nvidia-lts) ;;
                 *)              _pkgs+=(nvidia-dkms) ;;
             esac
             _pkgs+=("${KERNEL}-headers" nvidia-utils nvidia-settings)
