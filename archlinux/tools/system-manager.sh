@@ -12,6 +12,7 @@
 #   down [interface]          Bring WireGuard interface down — requires root
 #   restart [interface]       Restart WireGuard interface — requires root
 #   info [interface]          Verbose connection details
+#   switch [interface]        Interactively switch between configs — requires root
 #
 # Interface auto-detection:
 #   If /etc/wireguard/ contains exactly one .conf file, its name is used
@@ -25,6 +26,8 @@
 #   system-manager down wg0         # take down wg0
 #   system-manager restart          # restart default interface
 #   system-manager info             # verbose details for default interface
+#   system-manager switch           # interactive config switcher
+#   system-manager switch wg1       # switch directly to wg1
 
 set -euo pipefail
 
@@ -261,6 +264,93 @@ cmd_info() {
     echo ""
 }
 
+cmd_switch() {
+    _require_root
+    _require_wg
+
+    # Gather all available configs
+    local -a configs=()
+    if [[ -d /etc/wireguard ]]; then
+        for f in /etc/wireguard/*.conf; do
+            [[ -f "$f" ]] && configs+=("$f")
+        done
+    fi
+
+    [[ ${#configs[@]} -eq 0 ]] && _die "No WireGuard configs found in /etc/wireguard/"
+
+    local target_name="${1:-}"
+
+    # If a target was supplied directly, skip the menu
+    if [[ -n "$target_name" ]]; then
+        [[ -f "/etc/wireguard/${target_name}.conf" ]] || \
+            _die "No config found: /etc/wireguard/${target_name}.conf"
+    else
+        [[ ${#configs[@]} -eq 1 ]] && _die "Only one config available: $(basename "${configs[0]}" .conf)"
+
+        # ── Print menu ──────────────────────────────────────────────────────
+        echo -e "\n${BOLD}Available WireGuard configs:${NC}\n"
+
+        local i=0
+        for conf in "${configs[@]}"; do
+            local name
+            name="$(basename "$conf" .conf)"
+            (( ++i ))
+            echo -e "  ${CYAN}${i})${NC} ${BOLD}${name}${NC}"
+
+            # Parse and display every [Peer] block
+            local in_peer=0
+            local peer_num=0
+            while IFS= read -r line; do
+                local clean="${line}"
+                clean="${clean%"${clean##*[! ]}"}"
+
+                if [[ "$clean" =~ ^\[Peer\] ]]; then
+                    (( ++peer_num ))
+                    in_peer=1
+                    echo -e "     ${DIM}[Peer ${peer_num}]${NC}"
+                    continue
+                fi
+                if [[ "$clean" =~ ^\[ ]]; then
+                    in_peer=0
+                    continue
+                fi
+                if (( in_peer )) && [[ -n "$clean" ]]; then
+                    echo -e "       ${DIM}${clean}${NC}"
+                fi
+            done < "$conf"
+            echo ""
+        done
+
+        # ── Prompt ──────────────────────────────────────────────────────────
+        local choice
+        while true; do
+            printf "${BOLD}Select config [1-%d]:${NC} " "${#configs[@]}"
+            read -r choice
+            if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#configs[@]} )); then
+                break
+            fi
+            echo -e "  ${YELLOW}Please enter a number between 1 and ${#configs[@]}${NC}"
+        done
+
+        target_name="$(basename "${configs[$(( choice - 1 ))]}" .conf)"
+    fi
+
+    # ── Take down all active interfaces ─────────────────────────────────────
+    local active_ifaces
+    active_ifaces="$(wg show interfaces 2>/dev/null)" || true
+    if [[ -n "$active_ifaces" ]]; then
+        for iface in $active_ifaces; do
+            _log "Taking down ${iface}..."
+            wg-quick down "$iface" || _warn "Failed to bring down ${iface} (may already be inactive)"
+        done
+    fi
+
+    # ── Bring up selected config ─────────────────────────────────────────────
+    _log "Bringing up ${target_name}..."
+    wg-quick up "$target_name"
+    _log "${target_name} is up"
+}
+
 # ── Usage ───────────────────────────────────────────────────────────────────
 
 usage() {
@@ -272,6 +362,7 @@ usage() {
     echo "  down [iface]      Bring interface down (requires root)"
     echo "  restart [iface]   Restart interface (requires root)"
     echo "  info [iface]      Verbose connection details"
+    echo "  switch [iface]    Interactively switch configs (requires root)"
     echo ""
     echo "If only one .conf exists in /etc/wireguard/, the interface is"
     echo "detected automatically."
@@ -286,6 +377,7 @@ case "${1:-status}" in
     down)     cmd_down "${2:-}" ;;
     restart)  cmd_restart "${2:-}" ;;
     info)     cmd_info "${2:-}" ;;
+    switch)   cmd_switch "${2:-}" ;;
     -h|--help|help) usage ;;
     *)        _die "Unknown command: $1 (try: system-manager --help)" ;;
 esac
